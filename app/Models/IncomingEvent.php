@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 class IncomingEvent extends Model
 {
@@ -11,8 +12,12 @@ class IncomingEvent extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = [
+    protected $guarded = [
+        'id',
+    ];
 
+    protected $casts = [
+        'payload'
     ];
 
     protected static function booted(): void
@@ -22,5 +27,11 @@ class IncomingEvent extends Model
                 $event->id = 'in_' . Str::ulid();
             }
         });
+    }
+
+    /****** Eloquent Relationship ******/
+    public function delivery(): HasOne
+    {
+        return $this->hasOne(IncomingEventDelivery::class)->latestOfMany();
     }
 }

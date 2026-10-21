@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AcceptMemberEvent;
 use App\Http\Requests\AcceptMemberEventRequest;
 use App\Traits\ResponseFormatter;
 use Illuminate\Http\JsonResponse;
@@ -15,9 +16,10 @@ class MemberEventController extends Controller
 
     }
 
+
     public function store(AcceptMemberEventRequest $request, AcceptMemberEvent $acceptMemberEvent): JsonResponse
     {
-        $result = $acceptWebhookEvent->handle($request->validated());
+        $result = $acceptMemberEvent->handle($request->validated());
 
         $event = $result['event'];
         $delivery = $result['delivery'];

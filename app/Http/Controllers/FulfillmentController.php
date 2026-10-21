@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Traits\ResponseBuilder;
 use Illuminate\Http\Request;
 use App\Services\TikTok\Resources\FulfillmentService;
+use App\Traits\ResponseFormatter;
 
 class FulfillmentController extends Controller
 {
     //
 
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(
         protected FulfillmentService $fulfillmentService)

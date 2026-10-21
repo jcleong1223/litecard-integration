@@ -7,7 +7,10 @@ use App\Domain\Webhooks\Models\InternalApiClient;
 use App\Domain\Webhooks\Models\WebhookDelivery;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
 use App\Domain\Webhooks\Models\WebhookEvent;
+use App\Jobs\DeliverLitecardEventJob;
 use App\Models\ApiClient;
+use App\Models\IncomingEvent;
+use App\Models\IncomingEventDelivery;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -38,30 +41,16 @@ class AcceptMemberEvent
             $client = ApiClient::active()->where('client_id', $clientId)->where('name', $clientSource)->first();
 
             [$event, $delivery] = DB::transaction(function () use ($data, $client) {
-                $snapshot = WebhookEndpointSnapshot::create([
-                    'internal_api_client_id' => $client->id,
-                    'tenant_id' => $data['tenant']['id'],
-                    'legacy_webhook_id' => $data['endpoint']['legacy_webhook_id'],
-                    'name' => $data['endpoint']['name'],
-                    'url' => $data['endpoint']['url'],
-                    'signing_secret_encrypted' => $data['endpoint']['signing_secret'],
-                    'timeout_seconds' => $data['endpoint']['timeout_seconds'] ?? config('webhook.default_timeout', 10),
-                    'max_attempts' => $data['endpoint']['max_attempts'] ?? config('webhook.default_max_attempts', 8),
-                    'status' => $data['endpoint']['status'],
-                    'alert_configuration' => $data['alert'] ?? null,
-                    'configuration_hash' => $this->configurationHash($data),
-                ]);
 
-                $event = WebhookEvent::create([
-                    'internal_api_client_id' => $client->id,
+                $event = IncomingEvent::create([
+                    'api_client_id' => $client->id,
                     'tenant_id' => $data['tenant']['id'],
                     'tenant_code' => $data['tenant']['code'] ?? null,
-                    'merchant_id' => $data['merchant']['id'] ?? null,
-                    'merchant_name' => $data['merchant']['name'] ?? null,
+                    'outlet_id' => $data['outlet']['outlet_id'] ?? null,
+                    'outlet_name' => $data['outlet']['outlet_name'] ?? null,
                     'source_system' => $data['source']['system'],
                     'source_instance_id' => $data['source']['instance_id'],
                     'source_event_id' => $data['source']['event_id'],
-                    'legacy_webhook_id' => $data['endpoint']['legacy_webhook_id'],
                     'event_type' => $data['event']['type'],
                     'api_version' => $data['event']['api_version'],
                     'aggregate_type' => $data['event']['aggregate_type'],
@@ -71,12 +60,13 @@ class AcceptMemberEvent
                     'payload' => $data['payload'],
                 ]);
 
-                $delivery = WebhookDelivery::create([
-                    'internal_api_client_id' => $client->id,
+                $delivery = IncomingEventDelivery::create([
+                    'api_client_id' => $client->id,
                     'tenant_id' => $data['tenant']['id'],
-                    'webhook_event_id' => $event->id,
+                    'incoming_event_id' => $event->id,
                     'endpoint_snapshot_id' => $snapshot->id,
-                    'status' => WebhookDelivery::STATUS_PENDING,
+                    'operation' => $data['endpoint']['operation'],
+                    'status' => IncomingEventDelivery::STATUS_PENDING,
                 ]);
 
                 return [$event, $delivery];
@@ -92,9 +82,9 @@ class AcceptMemberEvent
             throw $e;
         }
 
-        DeliverWebhookJob::dispatch($delivery->id)->onQueue('webhook-delivery');
+        DeliverLitecardEventJob::dispatch($delivery->id)->onQueue('litecard-event-delivery');
 
-        $delivery->update(['status' => WebhookDelivery::STATUS_QUEUED]);
+        $delivery->update(['status' => IncomingEventDelivery::STATUS_QUEUED]);
 
         return [
             'duplicate' => false,
@@ -105,11 +95,11 @@ class AcceptMemberEvent
 
     protected function findExisting(array $data): ?array
     {
-        $event = WebhookEvent::with('delivery')
+        $event = IncomingEvent::with('delivery')
             ->where('source_system', $data['source']['system'])
             ->where('source_instance_id', $data['source']['instance_id'])
             ->where('source_event_id', $data['source']['event_id'])
-            ->where('legacy_webhook_id', $data['endpoint']['legacy_webhook_id'])
+            ->where('source_request_id', $data['endpoint']['source_request_id'])
             ->first();
 
         if ($event === null) {

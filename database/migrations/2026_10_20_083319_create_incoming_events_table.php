@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('source_system', 50);
             $table->string('source_instance_id', 50);
             $table->string('source_event_id', 100);
+            $table->string('source_request_id', 50);
             $table->string('event_type', 30);
             $table->string('api_version', 20)->default('v1');
             $table->string('aggregate_type', 30);
@@ -36,7 +37,7 @@ return new class extends Migration
             $table->index('source_event_id');
 
             $table->unique(
-                ['source_system', 'source_instance_id', 'source_event_id'],
+                ['source_system', 'source_instance_id', 'source_event_id', 'source_request_id'],
                 'incoming_events_idempotency_unique'
             );
         });

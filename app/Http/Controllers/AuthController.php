@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\TikTok\Exceptions\TikTokApiException;
 use App\Services\TikTok\Resources\AuthService;
 use App\Services\TikTok\TokenManager;
-use App\Traits\ResponseBuilder;
+use App\Traits\ResponseFormatter;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(
         protected AuthService $authService,

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\TikTok\Resources\FinanceService;
-use App\Traits\ResponseBuilder;
+use App\Traits\ResponseFormatter;
 use Illuminate\Http\Request;
 
 class FinanceController extends Controller
 {
     //
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(protected FinanceService $financeService)
     {

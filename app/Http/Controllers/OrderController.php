@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\TikTok\Resources\OrderService;
-use App\Traits\ResponseBuilder;
+use App\Traits\ResponseFormatter;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
     //
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(
         protected OrderService $orderService,

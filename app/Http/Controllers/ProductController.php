@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Services\TikTok\Resources\ProductService;
-use App\Traits\ResponseBuilder;
+use App\Traits\ResponseFormatter;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(
         protected ProductService $productService,

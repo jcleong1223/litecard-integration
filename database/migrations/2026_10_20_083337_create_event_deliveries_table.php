@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('incoming_event_deliveries', function (Blueprint $table) {
-            $table->id();
+            $table->string('id', 32)->primary();
             $table->unsignedBigInteger('api_client_id');
             $table->string('tenant_id', 50);
             $table->string('incoming_event_id', 30);
@@ -45,38 +45,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('event_deliveries');
+        Schema::dropIfExists('incoming_event_deliveries');
     }
 };
-
-
-
-
-
-
-Schema::create('outgoing_event_deliveries', function (Blueprint $table) {
-    $table->id();
-
-    $table->foreignId('outgoing_event_id')
-        ->constrained('outgoing_events')
-        ->cascadeOnDelete();
-
-    $table->string('status', 30)->default('pending');
-    $table->unsignedInteger('attempt_count')->default(0);
-
-    $table->timestamp('first_attempt_at')->nullable();
-    $table->timestamp('last_attempt_at')->nullable();
-    $table->timestamp('next_attempt_at')->nullable();
-    $table->timestamp('succeeded_at')->nullable();
-    $table->timestamp('failed_at')->nullable();
-
-    $table->unsignedSmallInteger('last_http_status')->nullable();
-    $table->string('last_error_code', 100)->nullable();
-    $table->text('last_error_message')->nullable();
-    $table->unsignedInteger('last_response_duration_ms')->nullable();
-
-    $table->timestamps();
-
-    $table->index(['status', 'next_attempt_at']);
-    $table->index(['outgoing_event_id', 'status']);
-});

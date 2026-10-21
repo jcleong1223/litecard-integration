@@ -63,7 +63,7 @@ class AuthenticateApiClient
         }
 
         /****** Allowble request time range checking ******/
-        $allowableSkew = config('webhook.allowed_clock_skew_seconds') ?? 300;
+        $allowableSkew = config('sourcesystem.allowed_clock_skew_seconds') ?? 300;
 
         if (abs(time() - $requestTimestampInUnix) > (int) $allowableSkew) {
             return $this->unauthorizedResponse(
@@ -73,7 +73,7 @@ class AuthenticateApiClient
         }
 
         /****** Allowable request size checkign ******/
-        $maxSizeBytes = config('webhook.max_payload_bytes') ?? 1048576;
+        $maxSizeBytes = config('sourcesystem.max_payload_bytes') ?? 1048576;
         if (strlen($request->getContent()) > $maxSizeBytes) {
             return $this->errorResponse(
                 false,

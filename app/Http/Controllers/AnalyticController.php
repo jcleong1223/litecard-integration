@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Services\TikTok\Resources\AnalyticService;
-use App\Traits\ResponseBuilder;
+use App\Traits\ResponseFormatter;
 use Illuminate\Http\Request;
 
 class AnalyticController extends Controller
 {
     //
-    use ResponseBuilder;
+    use ResponseFormatter;
 
     public function __construct(protected AnalyticService $analyticService)
     {
