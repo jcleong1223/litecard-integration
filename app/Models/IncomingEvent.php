@@ -17,7 +17,8 @@ class IncomingEvent extends Model
     ];
 
     protected $casts = [
-        'payload'
+        'payload' => 'array',
+        'occurred_at' => 'datetime',
     ];
 
     protected static function booted(): void

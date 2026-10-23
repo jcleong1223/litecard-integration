@@ -12,7 +12,7 @@ class OutgoingEvent extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = [];
+    protected $guarded = [ 'id' ];
 
     protected static function booted(): void
     {

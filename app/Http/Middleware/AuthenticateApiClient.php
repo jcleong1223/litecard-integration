@@ -52,7 +52,7 @@ class AuthenticateApiClient
         $requestId = $request->header('X-SGDPLC-Request-Id');
         $requestSignature = $request->header('X-SGDPLC-Signature');
 
-        $client = ApiClient::active()->where('client_id', $clientId)->where('name', $clientSource)->first();
+        $client = ApiClient::active()->with('inboundSecret')->where('client_id', $clientId)->where('name', $clientSource)->first();
 
         /****** Client disable checkign ******/
         if (!$client) {
@@ -63,14 +63,14 @@ class AuthenticateApiClient
         }
 
         /****** Allowble request time range checking ******/
-        $allowableSkew = config('sourcesystem.allowed_clock_skew_seconds') ?? 300;
+        // $allowableSkew = config('sourcesystem.allowed_clock_skew_seconds') ?? 300;
 
-        if (abs(time() - $requestTimestampInUnix) > (int) $allowableSkew) {
-            return $this->unauthorizedResponse(
-                'Request timestamp is outside the allowed range.',
-                ErrorCode::REQUEST_TIMESTAMP_EXPIRED->name
-            );
-        }
+        // if (abs(time() - $requestTimestampInUnix) > (int) $allowableSkew) {
+        //     return $this->unauthorizedResponse(
+        //         'Request timestamp is outside the allowed range.',
+        //         ErrorCode::REQUEST_TIMESTAMP_EXPIRED->name
+        //     );
+        // }
 
         /****** Allowable request size checkign ******/
         $maxSizeBytes = config('sourcesystem.max_payload_bytes') ?? 1048576;
@@ -95,7 +95,8 @@ class AuthenticateApiClient
         $rawBody = $request->getContent();
 
         try {
-            $secret = Crypt::decryptString($client->secret_encrypted);
+            $secret = Crypt::decryptString($client->inboundSecret?->secret_encrypted);
+
         } catch (\Throwable $e) {
             Log::error('Internal API client secret could not be decrypted.', [
                 'client_id' => $clientId,

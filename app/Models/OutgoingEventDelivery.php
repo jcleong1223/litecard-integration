@@ -12,6 +12,7 @@ class OutgoingEventDelivery extends Model
 
     protected $keyType = 'string';
 
+    protected $guarded = ['id'];
 
     protected static function booted(): void
     {

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Services\TikTok\Exceptions\TikTokApiException;
-use App\Services\TikTok\Exceptions\TikTokAuthException;
 use App\Services\TikTok\Exceptions\TikTokRateLimitException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -21,18 +20,10 @@ class TikTokHttpClient
 
     public function __construct(protected Signer $signer)
     {
-        $this->apiBaseUrl = rtrim(config('tiktok.api_base_url'), '/');
-        $this->authBaseUrl = rtrim(config('tiktok.auth_base_url'), '/');
-        $this->appKey = config('tiktok.app_key');
-        $this->timeout = config('tiktok.timeout', 30);
+        $this->apiBaseUrl = rtrim(config('litecard.api_base_url'), '/');
+        $this->timeout = config('litecard.timeout', 30);
     }
 
-    /**
-     * Signed request against the Open API host (open-api.tiktokglobalshop.com).
-     *
-     * Automatically attaches: app_key, timestamp, sign (query params),
-     * x-tts-access-token (header) and shop_cipher (query param) when provided.
-     */
     public function request(
         string $method,
         string $path,
@@ -53,8 +44,6 @@ class TikTokHttpClient
         $query = array_map(
             fn ($value) => match (true) {
                 is_array($value) => implode(',', $value),
-                // PHP string-casts false to "" but http_build_query sends "0" —
-                // normalize explicitly so the signed string matches the sent URL
                 is_bool($value) => ($value ? 'true' : 'false'),
                 default => $value,
             },
@@ -108,11 +97,6 @@ class TikTokHttpClient
         return $this->request('POST', $path, $query, $body, $accessToken, $shopCipher);
     }
 
-    /**
-     * Unsigned request against the Auth host (auth.tiktok-shops.com).
-     * Used only for token/get and token/refresh, which authenticate
-     * with app_key + app_secret directly instead of a signature.
-     */
     public function authRequest(string $url, array $query): array
     {
         $start = microtime(true);
@@ -142,15 +126,9 @@ class TikTokHttpClient
         $message = $json['message'] ?? 'Unknown TikTok API error';
         $requestId = $json['request_id'] ?? null;
 
-        if ($response->status() === 429) {
-            throw new TikTokRateLimitException($message, $code, $requestId, 429);
-        }
 
-        // code 0 = business success
         if ($code !== 0) {
-            $exception = $isAuth || in_array($code, [105000, 105001, 105002, 36009001, 36009002], true)
-                ? TikTokAuthException::class
-                : TikTokApiException::class;
+            $exception = TikTokApiException::class;
 
             throw new $exception($message, $code, $requestId, $response->status());
         }
@@ -162,7 +140,7 @@ class TikTokHttpClient
     {
         $json = $response->json();
 
-        Log::info('TikTok API call', [
+        Log::info('Litecard API call', [
             'method' => $method,
             'path' => $path,
             'query_keys' => array_keys($query),

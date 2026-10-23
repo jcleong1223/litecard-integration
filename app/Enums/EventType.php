@@ -16,6 +16,9 @@ enum EventType: string
     case VOUCHER_REDEEMED = 'voucher.redeemed';
     case VOUCHER_EXPIRED = 'voucher.expired';
 
+    /****** Litecard config ******/
+    case LITECARD_CONFIG = 'litecard.config';
+
     public function label(): string
     {
         return match ($this) {
@@ -29,6 +32,7 @@ enum EventType: string
             self::VOUCHER_ISSUED => 'Voucher issued',
             self::VOUCHER_REDEEMED => 'Voucher redeemed',
             self::VOUCHER_EXPIRED => 'Voucher expired',
+            self::LITECARD_CONFIG => 'Litecard config',
         };
     }
 }

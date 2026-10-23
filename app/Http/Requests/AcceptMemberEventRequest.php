@@ -36,7 +36,7 @@ class AcceptMemberEventRequest extends FormRequest
             'tenant.id' => 'required|string|max:50',
             'tenant.code' => 'nullable|string|max:50',
             'outlet' => 'required|array',
-            'outlet.outlet_id' => 'required|string|max:50',
+            'outlet.outlet_id' => 'required|string',
             'outlet.outlet_name' => 'nullable|string|max:100',
 
             /****** Event ******/

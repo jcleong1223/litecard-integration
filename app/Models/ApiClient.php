@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ApiClient extends Model
@@ -36,8 +38,29 @@ class ApiClient extends Model
     }
 
     /****** Eloquent Relationship function ******/
-    public function secrets()
+    public function secrets() : HasMany
     {
         return $this->hasMany(ApiClientSecret::class);
+    }
+
+    public function inboundSecret(): HasOne
+    {
+        return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('direction', 'inbound');
+    }
+
+    public function inboundSecretByKey(string $key): HasOne
+    {
+        return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('key_id', $key)->where('direction', 'inbound');
+    }
+
+
+    public function callbackSecret(): HasOne
+    {
+        return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('direction', 'callback');
+    }
+
+    public function callbackSecretByKey(string $key): HasOne
+    {
+        return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('key_id', $key)->where('direction', 'callback');
     }
 }

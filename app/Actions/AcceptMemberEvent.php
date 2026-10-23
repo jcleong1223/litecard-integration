@@ -7,24 +7,19 @@ use App\Domain\Webhooks\Models\InternalApiClient;
 use App\Domain\Webhooks\Models\WebhookDelivery;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
 use App\Domain\Webhooks\Models\WebhookEvent;
+use App\Enums\EventOperation;
 use App\Jobs\DeliverLitecardEventJob;
 use App\Models\ApiClient;
 use App\Models\IncomingEvent;
 use App\Models\IncomingEventDelivery;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
-/**
- * Ingestion pipeline for POST /api/internal/v1/webhook-events (spec §7.3):
- * duplicate detection → persist event → persist endpoint snapshot →
- * create delivery → queue delivery job.
- */
+
 class AcceptMemberEvent
 {
-    /**
-     * @param array $data Validated request data (AcceptWebhookEventRequest)
-     * @return array{duplicate: bool, event: WebhookEvent, delivery: ?WebhookDelivery}
-     */
+
     public function handle(array $data): array
     {
         /****** Idempotency: source system + instance + event ID + legacy webhook ID ******/
@@ -36,11 +31,27 @@ class AcceptMemberEvent
 
         try {
 
-            $clientId = request()->header('X-SGDP-Client-Id');
-            $clientSource = request()->header('X-SGDP-Source');
-            $client = ApiClient::active()->where('client_id', $clientId)->where('name', $clientSource)->first();
+            $clientId = request()->header('X-SGDPLC-Client-Id');
+            $clientSource = request()->header('X-SGDPLC-Source');
+            $client = ApiClient::active()->with('inboundSecret')->where('client_id', $clientId)->where('name', $clientSource)->first();
+
+            if(!$client)
+            {
+                throw new InvalidArgumentException(
+                    "Invalid api client: {$clientId} ({$clientSource})"
+                );
+            }
+
 
             [$event, $delivery] = DB::transaction(function () use ($data, $client) {
+
+                $operation = EventOperation::tryFrom($data['event']['type'])?->operation();
+
+                if ($operation === null) {
+                    throw new InvalidArgumentException(
+                        "Unsupported event type: {$data['event']['type']}"
+                    );
+                }
 
                 $event = IncomingEvent::create([
                     'api_client_id' => $client->id,
@@ -64,8 +75,7 @@ class AcceptMemberEvent
                     'api_client_id' => $client->id,
                     'tenant_id' => $data['tenant']['id'],
                     'incoming_event_id' => $event->id,
-                    'endpoint_snapshot_id' => $snapshot->id,
-                    'operation' => $data['endpoint']['operation'],
+                    'operation' => $operation,
                     'status' => IncomingEventDelivery::STATUS_PENDING,
                 ]);
 
@@ -99,7 +109,6 @@ class AcceptMemberEvent
             ->where('source_system', $data['source']['system'])
             ->where('source_instance_id', $data['source']['instance_id'])
             ->where('source_event_id', $data['source']['event_id'])
-            ->where('source_request_id', $data['endpoint']['source_request_id'])
             ->first();
 
         if ($event === null) {

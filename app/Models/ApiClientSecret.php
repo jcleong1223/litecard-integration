@@ -26,5 +26,7 @@ class ApiClientSecret extends Model
         'expires_at' => 'datetime'
     ];
 
+    CONST STATUS_ACTIVE = 'active';
+    CONST STATUS_INACTIVE = 'inactive';
 
 }
