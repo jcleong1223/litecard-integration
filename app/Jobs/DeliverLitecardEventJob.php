@@ -29,7 +29,7 @@ class DeliverLitecardEventJob implements ShouldQueue
     {
         //
         $delivery = IncomingEventDelivery::with(['incomingEvent'])->find($this->deliveryId);
-dd($delivery);
+
         if ($delivery === null) {
             // Delivery was deleted or cancelled before the worker picked it up — exit silently.
             return;

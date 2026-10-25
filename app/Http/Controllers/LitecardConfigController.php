@@ -19,17 +19,9 @@ class LitecardConfigController extends Controller
     {
         $result = $acceptLitecardConfigEvent->handle($request->validated());
 
-        $event = $result['event'];
-        $delivery = $result['delivery'];
+        $status = $result['status'];
+        $message = $result['message'];
 
-        if ($result['duplicate']) {
-            return $this->duplicateResponse(
-                $event->id,
-                $delivery?->id ?? '',
-                $delivery?->status ?? 'queued'
-            );
-        }
-
-        return $this->acceptedResponse($event->id, $delivery->id, $delivery->status);
+        return $this->successResponse($result, $message, $status);
     }
 }

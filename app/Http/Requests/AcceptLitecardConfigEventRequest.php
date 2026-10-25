@@ -62,7 +62,7 @@ class AcceptLitecardConfigEventRequest extends FormRequest
             'success' => false,
             'error' => [
                 'code' => ErrorCode::VALIDATION_ERROR->name,
-                'message' => 'The webhook event request is invalid.',
+                'message' => 'The litecard config event request is invalid.',
                 'fields' => $validator->errors(),
             ],
         ], Response::HTTP_UNPROCESSABLE_ENTITY));

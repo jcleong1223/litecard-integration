@@ -17,7 +17,7 @@ class LitecardHttpClient
 
     protected int $timeout;
 
-    public function __construct(protected Signer $signer)
+    public function __construct()
     {
         $this->apiBaseUrl = rtrim(config('litecard.api_base_url'), '/');
         $this->timeout = config('litecard.timeout', 30);
@@ -122,18 +122,17 @@ class LitecardHttpClient
             );
         }
 
-        $code = (int) ($json['code'] ?? -1);
-        $message = $json['message'] ?? 'Unknown Litecard API error';
-        $requestId = $json['request_id'] ?? null;
+        $code = (int) $response->status();
+        $message = 'Unknown Litecard API error';
+        $requestId = null;
 
-
-        if ($code !== 0) {
+        if ($code !== 200) {
             $exception = LitecardApiException::class;
 
             throw new $exception($message, $code, $requestId, $response->status());
         }
 
-        return $json['data'] ?? [];
+        return $json ?? $json['data'];
     }
 
     protected function logCall(string $method, string $path, array $query, Response $response, float $start): void

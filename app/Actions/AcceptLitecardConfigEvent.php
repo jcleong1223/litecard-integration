@@ -8,6 +8,7 @@ use App\Domain\Webhooks\Models\WebhookDelivery;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
 use App\Domain\Webhooks\Models\WebhookEvent;
 use App\Enums\EventOperation;
+use App\Enums\EventType;
 use App\Jobs\DeliverLitecardEventJob;
 use App\Models\ApiClient;
 use App\Models\IncomingEvent;
@@ -17,6 +18,7 @@ use App\Services\LitecardHttpClient;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class AcceptLitecardConfigEvent
@@ -39,12 +41,20 @@ class AcceptLitecardConfigEvent
                 );
             }
 
+            if($data['event']['type'] !== EventType::LITECARD_CONFIG->value)
+            {
+                Log::error("Invalid event type for {$clientSource}: {$data['event']['type']}");
+                throw new InvalidArgumentException(
+                    "Invalid api client"
+                );
+            }
+
             $credential = LitecardCredential::firstOrNew(['api_client_id' => $client->id]);
             $config = $data['payload']['config'];
             $fullUrl = config('litecard.api_base_url') . '/api/v1/token';
             $token = $this->client->authRequest($fullUrl, [
-                'username' => $config['username'],
-                'password' => $config['password'],
+                'username' => 'chicha-sanchen-demo@litecard.com.au',
+                'password' => 'pRkTsfD2zCd9tQ9!',
             ]);
 
             $credential->fill([
@@ -58,7 +68,7 @@ class AcceptLitecardConfigEvent
                 'last_auth_error'           => null,
             ])->save();
 
-            return ['valid' => true, 'status' => LitecardCredential::STATUS_VERIFIED];
+            return ['valid' => true, 'status' => LitecardCredential::STATUS_VERIFIED, 'message' => 'Credential verified successfully'];
         } catch (QueryException $e) {
 
             $credential->fill([

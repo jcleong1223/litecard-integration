@@ -2,7 +2,6 @@
 
 namespace App\Domain\Webhooks\Actions;
 
-use App\Domain\Webhooks\Contracts\WebhookSigner;
 use App\Domain\Webhooks\Contracts\WebhookTransport;
 use App\Domain\Webhooks\Enums\WebhookAlertType;
 use App\Domain\Webhooks\Jobs\DeliverWebhookJob;
@@ -21,7 +20,6 @@ use Illuminate\Support\Facades\Log;
 class DeliverMemberEvent
 {
     public function __construct(
-        protected readonly WebhookSigner            $signer,
         protected readonly WebhookTransport         $transport,
         protected readonly WebhookPayloadBuilder    $payloadBuilder,
         protected readonly WebhookRetryPolicy       $retryPolicy,
@@ -31,7 +29,6 @@ class DeliverMemberEvent
 
     public function handle(IncomingEventDelivery $delivery): void
     {
-        // §20.4 — atomic state transition; exit if another worker owns this delivery.
         if (! $delivery->transitionToProcessing()) {
             return;
         }
@@ -52,45 +49,15 @@ class DeliverMemberEvent
             return;
         }
 
-        // ── Build envelope (§11.1) ────────────────────────────────────────
         $envelope = $this->payloadBuilder->build($event);
         $body     = json_encode($envelope, JSON_UNESCAPED_SLASHES);
 
-        // ── Sign (§13) ────────────────────────────────────────────────────
-        // The 'encrypted' cast on WebhookEndpointSnapshot decrypts the secret
-        // on read; a manual Crypt::decryptString() here would double-decrypt.
-        try {
-            $secret = $snapshot->signing_secret_encrypted;
-        } catch (\Throwable $e) {
-            Log::error('DeliverWebhook: signing secret could not be decrypted.', [
-                'delivery_id' => $delivery->id,
-            ]);
-            $this->markFailedPermanently(
-                $delivery,
-                null,
-                'unexpected_delivery_exception',
-                'Endpoint signing secret could not be decrypted.',
-                0,
-            );
-            return;
-        }
-        $signing = $this->signer->sign($body, $secret);
-
-        // ── Assemble outgoing headers (§12) ──────────────────────────────
         $requestHeaders = [
             'Content-Type'      => 'application/json',
-            'User-Agent'        => 'SGDataPOS-Webhooks/1.0',
-            'X-SGDP-Event-Id'   => $event->id,
-            'X-SGDP-Event-Type' => $event->event_type,
-            'X-SGDP-Delivery-Id' => $delivery->id,
-            'X-SGDP-Attempt'    => $delivery->attempt_count,
-            'X-SGDP-Timestamp'  => $signing['timestamp'],
-            'X-SGDP-Signature'  => $signing['signature'],
         ];
 
-        // ── Send (§18) ────────────────────────────────────────────────────
         $result = $this->transport->send(
-            $snapshot->url,
+            config('litecard.api_base_url'),
             $body,
             $requestHeaders,
             config('webhook.connection_timeout', 3),

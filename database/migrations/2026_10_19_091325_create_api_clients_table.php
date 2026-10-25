@@ -20,12 +20,6 @@ return new class extends Migration
             $table->string('status', 20)->default('active');
             $table->timestamp('last_used_at')->nullable();
             $table->string('callback_url');
-            $table->text('litecard_username_encrypted');
-            $table->text('litecard_password_encrypted');
-            $table->text('litecard_token_encrypted');
-            $table->string('litecard_status')->default('valid')->comment('valid, invalid');
-            $table->timestamp('litecard_last_used_at')->nullable();
-            $table->timestamp('litecard_token_expires_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

@@ -25,6 +25,16 @@ trait ResponseFormatter
         ], Response::HTTP_ACCEPTED);
     }
 
+    public function successResponse(array $data, string $message, string $status, int $statusCode = Response::HTTP_OK): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'status' => $status,
+            'data' => $data
+        ], $statusCode);
+    }
+
 
     /**
      * Ingestion API 200 OK Duplicate Response (Section 9.5)
