@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Webhooks\Services;
+namespace App\Services;
 
 use App\Enums\EventOperation;
 use App\Models\IncomingEvent;

@@ -22,7 +22,7 @@ class AcceptMemberEvent
 
     public function handle(array $data): array
     {
-        /****** Idempotency: source system + instance + event ID + legacy webhook ID ******/
+        /****** Idempotency: source system + instance + event ID ******/
         $existing = $this->findExisting($data);
 
         if ($existing !== null) {
@@ -120,20 +120,5 @@ class AcceptMemberEvent
             'event' => $event,
             'delivery' => $event->delivery,
         ];
-    }
-
-    /**
-     * Hash of the endpoint configuration (excluding the secret) so later
-     * configuration changes are detectable without storing plaintext.
-     */
-    protected function configurationHash(array $data): string
-    {
-        return hash('sha256', json_encode([
-            'url' => $data['endpoint']['url'],
-            'timeout_seconds' => $data['endpoint']['timeout_seconds'] ?? config('webhook.default_timeout', 10),
-            'max_attempts' => $data['endpoint']['max_attempts'] ?? config('webhook.default_max_attempts', 8),
-            'status' => $data['endpoint']['status'],
-            'alert' => $data['alert'] ?? null,
-        ], JSON_UNESCAPED_SLASHES));
     }
 }

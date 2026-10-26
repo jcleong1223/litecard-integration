@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Domain\Webhooks\Actions\DeliverMemberEvent;
+use App\Actions\DeliverMemberEvent;
 use App\Models\IncomingEventDelivery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -11,9 +11,9 @@ class DeliverLitecardEventJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $tries = 1;
 
-    public int $backoff = 60;
+    // public int $backoff = 60;
     /**
      * Create a new job instance.
      */
@@ -27,7 +27,6 @@ class DeliverLitecardEventJob implements ShouldQueue
      */
     public function handle(DeliverMemberEvent $deliverMemberEvent): void
     {
-        //
         $delivery = IncomingEventDelivery::with(['incomingEvent'])->find($this->deliveryId);
 
         if ($delivery === null) {

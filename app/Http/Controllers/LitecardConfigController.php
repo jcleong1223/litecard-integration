@@ -15,7 +15,7 @@ class LitecardConfigController extends Controller
 
     public function __construct() {}
 
-    public function store(AcceptMemberEventRequest $request, AcceptLitecardConfigEvent $acceptLitecardConfigEvent): JsonResponse
+    public function store(AcceptLitecardConfigEventRequest $request, AcceptLitecardConfigEvent $acceptLitecardConfigEvent): JsonResponse
     {
         $result = $acceptLitecardConfigEvent->handle($request->validated());
 

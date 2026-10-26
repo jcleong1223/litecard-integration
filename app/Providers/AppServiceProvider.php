@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Interfaces\Litecard\LitecardTransport;
+use App\Services\Litecard\HttpLitecardTransport;
 use App\Services\Signer;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,9 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(Signer::class, function () {
-            return new Signer(config('tiktok.app_secret'));
-        });
+        $this->app->bind(LitecardTransport::class, HttpLitecardTransport::class);
     }
 
     /**

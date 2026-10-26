@@ -43,6 +43,11 @@ class ApiClient extends Model
         return $this->hasMany(ApiClientSecret::class);
     }
 
+    public function litecardCredential() : HasOne
+    {
+        return $this->hasOne(LitecardCredential::class);
+    }
+
     public function inboundSecret(): HasOne
     {
         return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('direction', 'inbound');

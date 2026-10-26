@@ -1,30 +1,25 @@
 <?php
 
-namespace App\Domain\Webhooks\Actions;
+namespace App\Actions;
 
-use App\Domain\Webhooks\Contracts\WebhookTransport;
-use App\Domain\Webhooks\Enums\WebhookAlertType;
-use App\Domain\Webhooks\Jobs\DeliverWebhookJob;
-use App\Domain\Webhooks\Jobs\SendWebhookAlertJob;
-use App\Domain\Webhooks\Models\WebhookDelivery;
 use App\Domain\Webhooks\Models\WebhookDeliveryAttempt;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
-use App\Domain\Webhooks\Policies\WebhookRetryPolicy;
-use App\Domain\Webhooks\Policies\WebhookAlertPolicy;
-use App\Domain\Webhooks\Services\EndpointHealthService;
-use App\Domain\Webhooks\Services\WebhookPayloadBuilder;
+use App\Enums\EventOperation;
+use App\Interfaces\Litecard\LitecardTransport;
+use App\Jobs\DeliverLitecardEventJob;
 use App\Models\IncomingEventDelivery;
+use App\Policies\RetryPolicy;
+use App\Services\Litecard\PayloadMapperFactory;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
 
 class DeliverMemberEvent
 {
     public function __construct(
-        protected readonly WebhookTransport         $transport,
-        protected readonly WebhookPayloadBuilder    $payloadBuilder,
-        protected readonly WebhookRetryPolicy       $retryPolicy,
-        protected readonly WebhookAlertPolicy       $alertPolicy,
-        protected readonly EndpointHealthService    $endpointHealthService,
+        protected readonly LitecardTransport        $transport,
+        protected readonly PayloadMapperFactory     $payloadMapperFactory,
+        protected readonly RetryPolicy              $retryPolicy,
     ) {}
 
     public function handle(IncomingEventDelivery $delivery): void
@@ -34,9 +29,23 @@ class DeliverMemberEvent
         }
 
         $event    = $delivery->incomingEvent;
+        $clientLitecardCredential = $delivery->apiClient->litecardCredential ?? null;
+
+        if($clientLitecardCredential === null)
+        {
+
+            $this->markFailedPermanently(
+                $delivery,
+                null,
+                'litecard_credential_missing',
+                'Client Litecard Credential is missing.',
+                0,
+            );
+            return;
+        }
 
         if ($event === null) {
-            Log::error('DeliverWebhook: event is null.', [
+            Log::error('DeliverMemberEvent: event is null.', [
                 'delivery_id' => $delivery->id,
             ]);
             $this->markFailedPermanently(
@@ -49,26 +58,29 @@ class DeliverMemberEvent
             return;
         }
 
-        $envelope = $this->payloadBuilder->build($event);
-        $body     = json_encode($envelope, JSON_UNESCAPED_SLASHES);
-
+        $operation  = EventOperation::from($event->event_type);
+        $mapper     = $this->payloadMapperFactory->make($operation);
+        $envelope   = $mapper->toPayload($event);
+        $body       = json_encode($envelope, JSON_UNESCAPED_SLASHES);
+        $endpoint = rtrim(config('litecard.api_base_url'), '/') . $mapper->endpoint();
         $requestHeaders = [
             'Content-Type'      => 'application/json',
+            'Authorization'     => 'Bearer ' . Crypt::decryptString($clientLitecardCredential->access_token_encrypted),
         ];
 
         $result = $this->transport->send(
-            config('litecard.api_base_url'),
+            $endpoint,
             $body,
             $requestHeaders,
-            config('webhook.connection_timeout', 3),
-            $snapshot->timeout_seconds ?? config('webhook.default_timeout', 10),
+            config('sourcesystem.connection_timeout', 3),
+            $snapshot->timeout_seconds ?? config('sourcesystem.default_timeout', 10),
         );
 
-        // ── Record attempt (§19.4) ────────────────────────────────────────
-        $this->recordAttempt($delivery, $requestHeaders, $body, $result);
+        // ── Record attempt ────────────────────────────────────────
+        // $this->recordAttempt($delivery, $requestHeaders, $body, $result);
 
         // ── Resolve delivery state ────────────────────────────────────────
-        $this->resolveDeliveryState($delivery, $snapshot, $result);
+        $this->resolveDeliveryState($delivery, $result);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -76,59 +88,58 @@ class DeliverMemberEvent
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Persist a row in webhook_delivery_attempts (spec §19.4).
+     * Persist a row in webhook_delivery_attempts.
      */
-    protected function recordAttempt(
-        WebhookDelivery $delivery,
-        array           $requestHeaders,
-        string          $body,
-        array           $result,
-    ): void {
-        WebhookDeliveryAttempt::create([
-            'tenant_id'                  => $delivery->tenant_id,
-            'delivery_id'                => $delivery->id,
-            'attempt_number'             => $delivery->attempt_count,
-            'request_timestamp'          => now(),
-            'request_headers_sanitized'  => $requestHeaders,
-            'request_body_hash'          => hash('sha256', $body),
-            'response_status'            => $result['http_status'],
-            'response_headers_sanitized' => $result['response_headers'],
-            'response_body_excerpt'      => $result['response_body'],
-            'duration_ms'                => $result['duration_ms'],
-            'error_type'                 => $result['error_code'],
-            'error_message'              => $result['error_message'],
-            'attempted_at'               => now(),
-        ]);
-    }
+    // protected function recordAttempt(
+    //     IncomingEventDelivery $delivery,
+    //     array           $requestHeaders,
+    //     string          $body,
+    //     array           $result,
+    // ): void {
+    //     WebhookDeliveryAttempt::create([
+    //         'tenant_id'                  => $delivery->tenant_id,
+    //         'delivery_id'                => $delivery->id,
+    //         'attempt_number'             => $delivery->attempt_count,
+    //         'request_timestamp'          => now(),
+    //         'request_headers_sanitized'  => $requestHeaders,
+    //         'request_body_hash'          => hash('sha256', $body),
+    //         'response_status'            => $result['http_status'],
+    //         'response_headers_sanitized' => $result['response_headers'],
+    //         'response_body_excerpt'      => $result['response_body'],
+    //         'duration_ms'                => $result['duration_ms'],
+    //         'error_type'                 => $result['error_code'],
+    //         'error_message'              => $result['error_message'],
+    //         'attempted_at'               => now(),
+    //     ]);
+    // }
 
     /**
      * Determine the outcome and update the delivery accordingly.
      *
      * Outcomes:
-     *  - 2xx                        → delivered           (spec §17)
-     *  - retryable + attempts < max → retry_scheduled     (spec §16.1)
-     *  - non-retryable or max hit   → failed_permanently  (spec §16.4)
+     *  - 2xx                        → delivered
+     *  - retryable + attempts < max → retry_scheduled
+     *  - non-retryable or max hit   → failed_permanently
      */
     protected function resolveDeliveryState(
-        WebhookDelivery         $delivery,
-        WebhookEndpointSnapshot $snapshot,
+        IncomingEventDelivery   $delivery,
         array                   $result,
     ): void {
         $httpStatus = $result['http_status'];
         $errorCode  = $result['error_code'];
 
-        // ── Success: 2xx (§17 - Any HTTP status from 200 to 299 is considered successful.) ────────────────────────────────────────────
+        // ── Success: 2xx ────────────────────────────────────────────
         if ($httpStatus !== null && $httpStatus >= 200 && $httpStatus < 300) {
             $delivery->update([
-                'status'                    => WebhookDelivery::STATUS_DELIVERED,
+                'status'                    => IncomingEventDelivery::STATUS_DELIVERED,
                 'delivered_at'              => now(),
                 'last_http_status'          => $httpStatus,
                 'last_error_code'           => null,
                 'last_error_message'        => null,
                 'last_response_duration_ms' => $result['duration_ms'],
+                'response_body_excerpt'      => json_decode($result['response_body'], true, 512, JSON_THROW_ON_ERROR),
             ]);
 
-            $this->endpointHealthService->recordEndpointHealthStatus($delivery);
 
             return;
         }
@@ -139,44 +150,40 @@ class DeliverMemberEvent
         }
 
         $attemptCount = $delivery->attempt_count;
-        $maxAttempts  = $snapshot->max_attempts ?? config('webhook.default_max_attempts', 8);
+        $maxAttempts  = config('sourcesystem.default_max_attempts', 8);
 
-        // ── Retryable (§16.1 / §16.3) ─────────────────────────────────────
+        // ── Can Retry ─────────────────────────────────────
         if ($this->retryPolicy->shouldRetry($attemptCount, $maxAttempts, $httpStatus, $errorCode)) {
             $delay       = $this->retryPolicy->getDelaySeconds($attemptCount);
             $nextAttempt = now()->addSeconds($delay);
 
             $delivery->update([
-                'status'                    => WebhookDelivery::STATUS_RETRY_SCHEDULED,
+                'status'                    => IncomingEventDelivery::STATUS_RETRY_SCHEDULED,
                 'next_attempt_at'           => $nextAttempt,
                 'last_http_status'          => $httpStatus,
                 'last_error_code'           => $errorCode,
                 'last_error_message'        => $result['error_message'],
                 'last_response_duration_ms' => $result['duration_ms'],
+                'response_body_excerpt'      => json_decode($result['response_body'], true, 512, JSON_THROW_ON_ERROR),
             ]);
 
-            DeliverWebhookJob::dispatch($delivery->id)
-                ->onQueue('webhook-delivery')
+            DeliverLitecardEventJob::dispatch($delivery->id)
+                ->onQueue('litecard-event-delivery')
                 ->delay($nextAttempt);
-
-            // TODO (Phase 5): check warning-alert threshold (spec §21.1).
-            $this->endpointHealthService->recordEndpointHealthStatus($delivery);
 
             return;
         }
 
-        // ── Permanently failed (§16.4 / §21.2) ───────────────────────────
+        // ── Permanently failed ───────────────────────────
         $this->markFailedPermanently(
             $delivery,
             $httpStatus,
             $errorCode,
             $result['error_message'],
             $result['duration_ms'],
+            $result['response_body'],
         );
 
-        // ── Update endpoint health (§19.5 / §21.3–§21.5) ─────────────────
-        // Called once after the delivery state is fully resolved.
-        $this->endpointHealthService->recordEndpointHealthStatus($delivery);
     }
 
     /**
@@ -188,6 +195,7 @@ class DeliverMemberEvent
         ?string         $errorCode,
         ?string         $errorMessage,
         int             $durationMs,
+        ?string         $responseBody,
     ): void {
         $delivery->update([
             'status'                    => IncomingEventDelivery::STATUS_FAILED_PERMANENTLY,
@@ -196,18 +204,8 @@ class DeliverMemberEvent
             'last_error_code'           => $errorCode,
             'last_error_message'        => $errorMessage,
             'last_response_duration_ms' => $durationMs,
+            'response_body_excerpt'      => json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR),
         ]);
 
-        /****** dispatch endpoint_degraded alert (§21.2). ******/
-        // $alertDecision = $this->alertPolicy->shouldAlert($delivery, AlertType::DELIVERY_PERMANENT_FAILURE->value);
-
-        // if ($alertDecision['should_send']) {
-        //     SendWebhookAlertJob::dispatch(
-        //         $delivery->id,
-        //         $alertDecision['recipients'],
-        //         WebhookAlertType::DELIVERY_PERMANENT_FAILURE->value,
-        //         $alertDecision['dedup_key'],
-        //     )->onQueue('webhook-alerts');
-        // }
     }
 }

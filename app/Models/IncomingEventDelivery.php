@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class IncomingEventDelivery extends Model
@@ -23,6 +24,10 @@ class IncomingEventDelivery extends Model
     const STATUS_FAILED_PERMANENTLY = 'failed_permanently';
     const STATUS_CANCELLED = 'cancelled';
 
+    protected $casts = [
+        'response_body_excerpt' => 'array',
+    ];
+
     protected static function booted(): void
     {
         static::creating(function (self $delivery) {
@@ -36,6 +41,20 @@ class IncomingEventDelivery extends Model
     public function incomingEvent()
     {
         return $this->belongsTo(IncomingEvent::class);
+    }
+
+    public function apiClient()
+    {
+        return $this->belongsTo(ApiClient::class);
+    }
+
+    public function litecardCredential()
+    {
+        return $this->hasOne(
+            LitecardCredential::class,
+            'api_client_id',
+            'api_client_id'
+        );
     }
 
     public function transitionToProcessing(): bool

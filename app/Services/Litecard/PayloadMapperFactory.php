@@ -14,8 +14,8 @@ class PayloadMapperFactory
 {
     /** @var array<string, class-string<PayloadMapperInterface>> */
     private const MAPPERS = [
-        'user.register'    => PassCreateMapper::class,
-        'user.deactivated' => PassDeleteMapper::class,
+        'member.registered'    => PassCreateMapper::class,
+        'member.deactivated' => PassDeleteMapper::class,
     ];
 
     public function make(EventOperation $operation): PayloadMapperInterface
