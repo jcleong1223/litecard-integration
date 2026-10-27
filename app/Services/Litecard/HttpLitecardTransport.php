@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Http;
  */
 class HttpLitecardTransport implements LitecardTransport
 {
-    public function send(string $url, string $body, array $headers, int $connectTimeout, int $timeout): array
+    public function send(string $url, string $body, array $headers, int $connectTimeout, int $timeout, string $method): array
     {
         $startTime = microtime(true);
 
@@ -27,8 +27,7 @@ class HttpLitecardTransport implements LitecardTransport
             $response = Http::connectTimeout($connectTimeout)
                 ->timeout($timeout)
                 ->withHeaders($headers)
-                ->withBody($body, 'application/json')
-                ->post($url);
+                ->send($method, $url, ['body' => $body]);
 
             $durationMs = (int) round((microtime(true) - $startTime) * 1000);
             $maxExcerpt = config('litecard.max_response_excerpt_bytes', 8192);

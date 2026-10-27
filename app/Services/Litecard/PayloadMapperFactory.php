@@ -7,21 +7,23 @@ use App\Enums\EventOperation;
 use App\Interfaces\Litecard\PayloadMapperInterface;
 use App\Services\Litecard\PayloadMappers\PassCreateMapper;
 use App\Services\Litecard\PayloadMappers\PassDeleteMapper;
-
+use App\Services\Litecard\PayloadMappers\PassStatusMapper;
+use App\Services\Litecard\PayloadMappers\PointChangedMapper;
 use InvalidArgumentException;
 
 class PayloadMapperFactory
 {
     /** @var array<string, class-string<PayloadMapperInterface>> */
-    private const MAPPERS = [
-        'member.registered'    => PassCreateMapper::class,
-        'member.deactivated' => PassDeleteMapper::class,
-    ];
 
-    public function make(EventOperation $operation): PayloadMapperInterface
+    public function make(string $operation): PayloadMapperInterface
     {
-        $class = self::MAPPERS[$operation->value]
-            ?? throw new InvalidArgumentException("No mapper for operation [{$operation->value}]");
+        $class = match ($operation) {
+            EventOperation::PASS_CREATE->value  => PassCreateMapper::class,
+            EventOperation::PASS_STATUS->value  => PassStatusMapper::class,
+            EventOperation::PASSES_DELETE->value  => PassDeleteMapper::class,
+            EventOperation::POINT_UPDATE->value => PointChangedMapper::class,
+            EventOperation::CARD_VIEW->value    => throw new InvalidArgumentException('card-view carries no request body'),
+        };
 
         return app($class);
     }

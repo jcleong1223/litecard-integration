@@ -8,6 +8,7 @@ use App\Domain\Webhooks\Models\WebhookDelivery;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
 use App\Domain\Webhooks\Models\WebhookEvent;
 use App\Enums\EventOperation;
+use App\Enums\EventType;
 use App\Jobs\DeliverLitecardEventJob;
 use App\Models\ApiClient;
 use App\Models\IncomingEvent;
@@ -45,7 +46,7 @@ class AcceptMemberEvent
 
             [$event, $delivery] = DB::transaction(function () use ($data, $client) {
 
-                $operation = EventOperation::tryFrom($data['event']['type'])?->operation();
+                $operation = EventType::tryFrom($data['event']['type'])?->operation();
 
                 if ($operation === null) {
                     throw new InvalidArgumentException(

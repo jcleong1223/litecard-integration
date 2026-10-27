@@ -16,6 +16,8 @@ enum EventType: string
     case VOUCHER_REDEEMED = 'voucher.redeemed';
     case VOUCHER_EXPIRED = 'voucher.expired';
 
+    case CARD_VIEW = 'card.view';
+
     /****** Litecard config ******/
     case LITECARD_CONFIG = 'litecard.config';
 
@@ -32,7 +34,29 @@ enum EventType: string
             self::VOUCHER_ISSUED => 'Voucher issued',
             self::VOUCHER_REDEEMED => 'Voucher redeemed',
             self::VOUCHER_EXPIRED => 'Voucher expired',
+            self::CARD_VIEW => 'View card',
             self::LITECARD_CONFIG => 'Litecard config',
+        };
+    }
+
+    public function operation(): ?EventOperation
+    {
+        return match ($this) {
+            self::MEMBER_REGISTERED   => EventOperation::PASS_CREATE,
+
+            self::MEMBER_UPDATED,
+            self::POINT_CHANGED      => EventOperation::POINT_UPDATE,
+
+            self::MEMBER_DEACTIVATED,
+            self::MEMBER_DELETED     => EventOperation::PASSES_DELETE,
+
+            self::CARD_VIEW          => EventOperation::CARD_VIEW,
+
+            self::MEMBER_ACTIVATED,
+            self::MEMBER_EXPIRED,
+            self::VOUCHER_REDEEMED     => EventOperation::PASS_STATUS,
+
+            default                  => null,
         };
     }
 }

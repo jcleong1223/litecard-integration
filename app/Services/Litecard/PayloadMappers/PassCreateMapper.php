@@ -8,16 +8,6 @@ use App\Models\IncomingEvent;
 
 class PassCreateMapper implements PayloadMapperInterface
 {
-    public function operation(): string
-    {
-        return EventOperation::MEMBER_REGISTER->operation(); // 'pass-create'
-    }
-
-    public function endpoint(): string
-    {
-        return EventOperation::MEMBER_REGISTER->endpoint();
-    }
-
     public function toPayload(IncomingEvent $event): array
     {
         $p = $event->payload;

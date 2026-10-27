@@ -26,5 +26,5 @@ interface LitecardTransport
      *     error_message: string|null,
      * }
      */
-    public function send(string $url, string $body, array $headers, int $connectTimeout, int $timeout): array;
+    public function send(string $url, string $body, array $headers, int $connectTimeout, int $timeout, string $method): array;
 }

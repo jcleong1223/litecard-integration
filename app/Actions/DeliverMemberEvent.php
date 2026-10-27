@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Domain\Webhooks\Models\WebhookDeliveryAttempt;
 use App\Domain\Webhooks\Models\WebhookEndpointSnapshot;
 use App\Enums\EventOperation;
+use App\Enums\EventType;
 use App\Interfaces\Litecard\LitecardTransport;
 use App\Jobs\DeliverLitecardEventJob;
 use App\Models\IncomingEventDelivery;
@@ -33,7 +34,6 @@ class DeliverMemberEvent
 
         if($clientLitecardCredential === null)
         {
-
             $this->markFailedPermanently(
                 $delivery,
                 null,
@@ -60,11 +60,23 @@ class DeliverMemberEvent
             return;
         }
 
-        $operation  = EventOperation::from($event->event_type);
-        $mapper     = $this->payloadMapperFactory->make($operation);
-        $envelope   = $mapper->toPayload($event);
-        $body       = json_encode($envelope, JSON_UNESCAPED_SLASHES);
-        $endpoint = rtrim(config('litecard.api_base_url'), '/') . $mapper->endpoint();
+        $operationValue  = EventType::tryFrom($event->event_type)->operation()->value;
+        $operation = EventOperation::tryFrom($operationValue);
+        $method    = EventOperation::tryFrom($operationValue)->method();
+        $envelope = [];
+        if ($method !== 'GET') {
+            $envelope = $this->payloadMapperFactory->make($operationValue)->toPayload($event);
+        }
+        $body = json_encode($envelope, JSON_UNESCAPED_SLASHES);
+        $endpoint = rtrim(config('litecard.api_base_url'), '/') . $operation->endpoint();
+
+        if ($operation === EventOperation::CARD_VIEW) {
+            $payload = $event->payload;
+            $cardId = $payload['litecard']['card_id'] ?? null;
+            $body = '';
+            $endpoint .= '/' . rawurlencode((string) $cardId);
+        }
+
         $requestHeaders = [
             'Content-Type'      => 'application/json',
             'Authorization'     => 'Bearer ' . Crypt::decryptString($clientLitecardCredential->access_token_encrypted),
@@ -76,6 +88,7 @@ class DeliverMemberEvent
             $requestHeaders,
             config('sourcesystem.connection_timeout', 3),
             $snapshot->timeout_seconds ?? config('sourcesystem.default_timeout', 10),
+            $operation->method() ?? 'POST',
         );
 
         // ── Record attempt ────────────────────────────────────────
@@ -139,9 +152,8 @@ class DeliverMemberEvent
                 'last_error_code'           => null,
                 'last_error_message'        => null,
                 'last_response_duration_ms' => $result['duration_ms'],
-                'response_body_excerpt'      => json_decode($result['response_body'], true, 512, JSON_THROW_ON_ERROR),
+                'response_body_excerpt'      => $this->decodeExcerpt($result['response_body'])
             ]);
-
 
             return;
         }
@@ -166,7 +178,7 @@ class DeliverMemberEvent
                 'last_error_code'           => $errorCode,
                 'last_error_message'        => $result['error_message'],
                 'last_response_duration_ms' => $result['duration_ms'],
-                'response_body_excerpt'      => json_decode($result['response_body'], true, 512, JSON_THROW_ON_ERROR),
+                'response_body_excerpt'     => $this->decodeExcerpt($result['response_body'])
             ]);
 
             DeliverLitecardEventJob::dispatch($delivery->id)
@@ -185,7 +197,6 @@ class DeliverMemberEvent
             $result['duration_ms'],
             $result['response_body'],
         );
-
     }
 
     /**
@@ -206,8 +217,23 @@ class DeliverMemberEvent
             'last_error_code'           => $errorCode,
             'last_error_message'        => $errorMessage,
             'last_response_duration_ms' => $durationMs,
-            'response_body_excerpt'      => json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR),
+            'response_body_excerpt'     => $this->decodeExcerpt($responseBody),
         ]);
 
+    }
+
+    protected function decodeExcerpt(?string $body): ?array
+    {
+        if ($body === null || $body === '') {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+
+            return is_array($decoded) ? $decoded : ['value' => $decoded];
+        } catch (\JsonException) {
+            return ['raw' => $body];
+        }
     }
 }

@@ -4,23 +4,31 @@ namespace App\Enums;
 
 enum EventOperation: string
 {
-
-    case MEMBER_REGISTER = 'member.registered';
-    case MEMBER_DEACTIVATED = 'member.deactivated';
-
-    public function operation(): string
-    {
-        return match ($this) {
-            self::MEMBER_REGISTER => 'pass-create',
-            self::MEMBER_DEACTIVATED => 'pass-delete',
-        };
-    }
+    case PASS_CREATE  = 'pass-create';
+    case PASS_STATUS  = 'pass-status';
+    case PASSES_DELETE  = 'passes-delete';
+    case POINT_UPDATE = 'point-update';
+    case CARD_VIEW    = 'card-view';
 
     public function endpoint(): string
     {
         return match ($this) {
-            self::MEMBER_REGISTER => '/api/v1/card',
-            self::MEMBER_DEACTIVATED => '/api/v1/card-owner/delete',
+            self::PASS_CREATE  => '/api/v1/card',
+            self::POINT_UPDATE => '/api/v1/card',
+            self::CARD_VIEW    => '/api/v1/card',
+            self::PASSES_DELETE  => '/api/v1/card-owner/delete',
+            self::PASS_STATUS  => '/api/v1/card/status',
+        };
+    }
+
+    public function method(): string
+    {
+        return match ($this) {
+            self::PASS_CREATE  => 'POST',
+            self::POINT_UPDATE => 'PATCH',
+            self::CARD_VIEW    => 'GET',
+            self::PASSES_DELETE  => 'DELETE',
+            self::PASS_STATUS  => 'POST',
         };
     }
 }
