@@ -10,18 +10,22 @@ class PassDeleteMapper implements PayloadMapperInterface
 {
     public function operation(): string
     {
-        return EventOperation::USER_DEACTIVATED->operation(); // 'pass-delete'
+        return EventOperation::MEMBER_DEACTIVATED->operation(); // 'pass-delete'
     }
 
     public function endpoint(): string
     {
-        return EventOperation::USER_DEACTIVATED->endpoint();
+        return EventOperation::MEMBER_DEACTIVATED->endpoint();
     }
 
     public function toPayload(IncomingEvent $event): array
     {
+        $p = $event->payload;
+
         return [
-            'external_id' => $event->payload['member_id'],
+            'email' => $p['user']['email'],
+            'phone' => $p['user']['mobile'],
+            'databaseDelete' => false
         ];
     }
 }

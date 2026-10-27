@@ -40,6 +40,7 @@ class DeliverMemberEvent
                 'litecard_credential_missing',
                 'Client Litecard Credential is missing.',
                 0,
+                null
             );
             return;
         }
@@ -54,6 +55,7 @@ class DeliverMemberEvent
                 'unexpected_delivery_exception',
                 'Event or endpoint snapshot is missing.',
                 0,
+                null
             );
             return;
         }
