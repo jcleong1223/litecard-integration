@@ -8,6 +8,7 @@ use App\Enums\EventOperation;
 use App\Enums\EventType;
 use App\Interfaces\Litecard\LitecardTransport;
 use App\Jobs\DeliverLitecardEventJob;
+use App\Jobs\NotifyClientResultJob;
 use App\Models\IncomingEventDelivery;
 use App\Policies\RetryPolicy;
 use App\Services\Litecard\PayloadMapperFactory;
@@ -155,6 +156,10 @@ class DeliverMemberEvent
                 'response_body_excerpt'      => $this->decodeExcerpt($result['response_body'])
             ]);
 
+            NotifyClientResultJob::dispatch($delivery->id, IncomingEventDelivery::STATUS_DELIVERED)
+                ->onQueue('client-notifications')
+                ->afterCommit();
+
             return;
         }
 
@@ -220,6 +225,9 @@ class DeliverMemberEvent
             'response_body_excerpt'     => $this->decodeExcerpt($responseBody),
         ]);
 
+        NotifyClientResultJob::dispatch($delivery->id, IncomingEventDelivery::STATUS_FAILED_PERMANENTLY)
+            ->onQueue('client-notifications')
+            ->afterCommit();
     }
 
     protected function decodeExcerpt(?string $body): ?array

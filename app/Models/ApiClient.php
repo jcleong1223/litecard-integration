@@ -58,7 +58,6 @@ class ApiClient extends Model
         return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('key_id', $key)->where('direction', 'inbound');
     }
 
-
     public function callbackSecret(): HasOne
     {
         return $this->hasOne(ApiClientSecret::class)->where('status', ApiClientSecret::STATUS_ACTIVE)->where('direction', 'callback');
