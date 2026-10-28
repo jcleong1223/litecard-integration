@@ -6,7 +6,7 @@ use App\Enums\EventOperation;
 use App\Interfaces\Litecard\PayloadMapperInterface;
 use App\Models\IncomingEvent;
 
-class PointChangedMapper implements PayloadMapperInterface
+class PassChangedMapper implements PayloadMapperInterface
 {
     public function toPayload(IncomingEvent $event): array
     {

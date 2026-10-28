@@ -45,15 +45,15 @@ enum EventType: string
             self::MEMBER_REGISTERED   => EventOperation::PASS_CREATE,
 
             self::MEMBER_UPDATED,
-            self::POINT_CHANGED      => EventOperation::POINT_UPDATE,
+            self::POINT_CHANGED      => EventOperation::PASS_UPDATE,
 
-            self::MEMBER_DEACTIVATED,
             self::MEMBER_DELETED     => EventOperation::PASSES_DELETE,
 
             self::CARD_VIEW          => EventOperation::CARD_VIEW,
 
             self::MEMBER_ACTIVATED,
             self::MEMBER_EXPIRED,
+            self::MEMBER_DEACTIVATED,
             self::VOUCHER_REDEEMED     => EventOperation::PASS_STATUS,
 
             default                  => null,

@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\ErrorCode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,4 +23,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        /****** Bad client input must surface as 4xx, never a 500 ******/
+        $exceptions->render(function (InvalidArgumentException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code'    => ErrorCode::VALIDATION_ERROR->name,
+                        'message' => $e->getMessage(),
+                    ],
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            return null;
+        });
     })->create();

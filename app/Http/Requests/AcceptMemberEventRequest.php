@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 
 use App\Enums\ErrorCode;
+use App\Enums\EventType;
+use Closure;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -41,7 +43,18 @@ class AcceptMemberEventRequest extends FormRequest
 
             /****** Event ******/
             'event' => 'required|array',
-            'event.type' => ['required', 'string', 'max:50', 'regex:/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/'],
+            'event.type' => [
+                'required',
+                'string',
+                'max:50',
+                'regex:/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/',
+                /****** Reject event types this service cannot map to an operation ******/
+                function (string $attribute, mixed $value, Closure $fail) {
+                    if (EventType::tryFrom($value)?->operation() === null) {
+                        $fail('The event type is not supported: ' . $value);
+                    }
+                },
+            ],
             'event.api_version' => 'required|string|max:20',
             'event.aggregate_type' => 'required|string|max:30',
             'event.aggregate_id' => 'required|string|max:100',
