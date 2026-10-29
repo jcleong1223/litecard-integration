@@ -110,6 +110,12 @@ class AcceptMemberEvent
             ->where('source_system', $data['source']['system'])
             ->where('source_instance_id', $data['source']['instance_id'])
             ->where('source_event_id', $data['source']['event_id'])
+            ->whereHas('delivery', function ($query) {
+                $query->whereIn('status', [
+                    IncomingEventDelivery::STATUS_PENDING,
+                    IncomingEventDelivery::STATUS_QUEUED,
+                ]);
+            })
             ->first();
 
         if ($event === null) {

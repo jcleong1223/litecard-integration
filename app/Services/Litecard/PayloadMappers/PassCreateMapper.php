@@ -20,7 +20,7 @@ class PassCreateMapper implements PayloadMapperInterface
                 'firstName'   => $p['user']['first_name'],
                 'lastName'    => $p['user']['last_name'],
                 'pointsKey' => $p['user']['points'],
-                "memberId" => $p['user']['membership_id'],
+                "memberId" => $p['user']['membership_id'] ?? 'n/a',
             ],
         ];
     }

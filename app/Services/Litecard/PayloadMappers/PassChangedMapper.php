@@ -12,10 +12,13 @@ class PassChangedMapper implements PayloadMapperInterface
     {
         $p = $event->payload;
         $cardPayload = [
-            'pointsKey' => data_get($p, 'user.points'),
+            'pointsKey' => ($points = data_get($p, 'user.points')) !== null
+                ? (int) $points
+                : null,
             'email'     => data_get($p, 'user.email'),
             'firstName' => data_get($p, 'user.first_name'),
             'lastName'  => data_get($p, 'user.last_name'),
+            'memberId'  => data_get($p, 'user.membership_id'),
         ];
 
         $cardPayload = array_filter(
